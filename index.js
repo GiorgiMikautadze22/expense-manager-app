@@ -16,7 +16,7 @@ async function readExpenseManager() {
   try {
     const data = await fs.readFile("./data.json", "utf-8");
     const expenseManager = JSON.parse(data);
-    console.log(expenseManager);
+    console.log("reading", expenseManager);
     return expenseManager;
   } catch (error) {
     console.error("Error reading file:", error);
@@ -25,11 +25,16 @@ async function readExpenseManager() {
 }
 
 app.use(express.json());
+app.set("view engine", "ejs");
 
 app.get("/api/expenses", async (req, res) => {
   try {
     const expenseManager = await readExpenseManager();
-    res.json({ success: true, data: expenseManager });
+    const userAgent = req.headers["user-agent"];
+    console.log("User-Agent:", userAgent);
+    console.log("request", expenseManager);
+    res.render("index", { expenseManager });
+    // res.json({ success: true, data: expenseManager });
   } catch (error) {
     res.json({ success: false, message: "Error" });
   }
@@ -40,27 +45,30 @@ app.get("/expenses/:id", async (req, res) => {
     const expenseManager = await readExpenseManager();
     const id = parseInt(req.params.id);
     const index = expenseManager.findIndex((expense) => expense.id === id);
+    const userAgent = req.headers["user-agent"];
+    console.log("User-Agent:", userAgent);
 
     if (index === -1) {
       res.status(404).json({ success: false, message: "Expense not found" });
     }
 
     const expense = expenseManager[index];
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html lang="en">
-        <head>
-          <meta charset="UTF-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>Expense Details</title>
-        </head>
-        <body>
-          <p>${JSON.stringify(expense)}</p>
-        </body>
-      </html>`;
+    // const htmlContent = `
+    //   <!DOCTYPE html>
+    //   <html lang="en">
+    //     <head>
+    //       <meta charset="UTF-8" />
+    //       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    //       <title>Expense Details</title>
+    //     </head>
+    //     <body>
+    //       <p>${JSON.stringify(expense)}</p>
+    //     </body>
+    //   </html>`;
 
-    res.setHeader("Content-Type", "text/html");
-    res.send(htmlContent);
+    // res.setHeader("Content-Type", "text/html");
+    // res.send(htmlContent);
+    res.json({ success: true, data: expense });
   } catch (error) {
     res.json({ success: false, message: "Error" });
   }
@@ -68,11 +76,15 @@ app.get("/expenses/:id", async (req, res) => {
 
 app.post("/api/expenses", async (req, res) => {
   try {
+    const userAgent = req.headers["user-agent"];
+    console.log("User-Agent:", userAgent);
     const expenseManager = await readExpenseManager();
     const expense = req.body;
     const lastId = expenseManager[expenseManager.length - 1]?.id;
     expense.id = lastId ? lastId + 1 : 1;
     expenseManager.push(expense);
+    // res.render("index", { expenseManager });
+
     res.send({ success: true, data: expenseManager, message: "expense added" });
   } catch (error) {
     res.json({ success: false, message: "Error" });
@@ -97,8 +109,9 @@ app.delete("/api/expenses/:id", async (req, res) => {
     expenseManager = expenseManager.filter(
       (expense) => expense.id !== parseInt(id)
     );
+    res.render("index", { expenseManager });
 
-    res.json({ success: true, data: expense, message: "expense deleted" });
+    // res.json({ success: true, data: expense, message: "expense deleted" });
     console.log(expenseManager);
   } catch (error) {
     res.json({ success: false, message: "Error" });
@@ -121,7 +134,9 @@ app.put("/api/expenses/:id", async (req, res) => {
       ...changeExpense,
     };
     expenseManager[index] = expense;
-    res.json({ success: true, data: expense, message: "expense changed" });
+    res.render("index", { expenseManager });
+
+    // res.json({ success: true, data: expense, message: "expense changed" });
   } catch (error) {
     res.json({ success: false, message: "Error" });
   }
@@ -136,3 +151,9 @@ app.listen(3000, () => {
 //3. შევქმნა POST endpoint, რომელიც /expenses url-ზე შექმნის ახალ ობიექტს.-------
 //4. შევქმნა DELETE endpoint, რომელიც /expenses/:id-ზე წაშლის შესაბამისი id-ის ობიექტს.-----
 //5. შევქმნა PUT endpoint, რომელიც /expenses/:id-ზე გაანახლებს შესაბამისი id-ის ობიექტს. ----
+
+// 1.დავწეროთ middleware, რომელიც ყოველ რიქვესთზე დალოგავს მომხმარებლის user agent-ს.
+
+// 2.მსმენელი აწყობს დინამიურ გვერდს, რომელიც id-ით წამოიღებს კონკრეტული ხარჯის ობიექტს.
+
+// 3.მსმენელი აწყობს view გვერდს, რომელიც დაარენდერებს ყველა დამატებულ ხარჯს.
